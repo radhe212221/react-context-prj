@@ -1,42 +1,33 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useReducer, useContext } from 'react';
 const PRODUCTS = [
   { id: 1, title: 'nike1', price: 100 },
   { id: 2, title: 'nike2', price: 200 },
   { id: 3, title: 'nike3', price: 300 },
   { id: 4, title: 'nike4', price: 400 },
 ];
-
 const WebsiteContext = createContext();
 
+const initialState = {
+  products: PRODUCTS,
+  cart: [],
+};
+function reducer(state = initialState, action) {
+  switch (action.type) {
+    case 'add-to-cart':
+      return { ...state, cart: action.payload };
+    case 'update-cart':
+      return { ...state, cart: action.payload };
+    case 'remove-from-cart':
+      return { ...state, cart: action.payload };
+
+    default:
+      return state;
+  }
+}
 export default function App() {
-  const [products, setproducts] = useState(PRODUCTS);
-  const [cart, setcart] = useState([]);
-
-  const removeFromCart = (id) => {
-    setcart(cart.filter((x) => x.id !== id));
-  };
-  const updateQty = (ob) => {
-    setcart(cart.map((x) => (x.id === ob.id ? ob : x)));
-  };
-  const addToCart = (x) => {
-    // console.log('add to cart', x);
-    if (cart.some((y) => y.id === x.id)) {
-      let { id, qty } = cart.find((y) => y.id === x.id);
-      setcart(cart.map((y) => (y.id === id ? { ...x, qty: qty + 1 } : y)));
-    } else {
-      setcart([...cart, { ...x, qty: 1 }]);
-    }
-  };
-
-  const value = {
-    products,
-    cart,
-    addToCart,
-    removeFromCart,
-    updateQty,
-  };
+  const [state, dispatch] = useReducer(reducer, initialState);
   return (
-    <WebsiteContext.Provider value={value}>
+    <WebsiteContext.Provider value={{ state, dispatch }}>
       <Site />
       <Cart />
     </WebsiteContext.Provider>
@@ -47,12 +38,20 @@ function Site() {
   const data = useContext(WebsiteContext);
   // console.log(data);
   const addtocart = (product) => {
-    data?.addToCart(product);
+    let payload = null;
+    if (data?.state?.cart?.some((x) => x?.id === product?.id)) {
+      payload = data?.state?.cart?.map((x) =>
+        x.id === product.id ? { ...x, qty: x.qty + 1 } : x
+      );
+    } else {
+      payload = [...data?.state?.cart, { ...product, qty: 1 }];
+    }
+    data?.dispatch({ type: 'add-to-cart', payload });
   };
   return (
     <div>
-      <h1>all products {data?.products?.length}</h1>
-      {data?.products?.map((x) => (
+      <h1>all products {data?.state?.products?.length}</h1>
+      {data?.state?.products?.map((x) => (
         <div>
           <h4>
             {x.title}- {x.price}
@@ -67,24 +66,40 @@ function Site() {
 function Cart() {
   const data = useContext(WebsiteContext);
   const inc = (x) => {
-    data?.updateQty({ ...x, qty: x.qty + 1 });
+    let payload = data?.state?.cart?.map((y) =>
+      y.id === x.id ? { ...y, qty: y.qty + 1 } : y
+    );
+    
+    data?.dispatch({ type: 'update-cart', payload });
+
   };
   const dec = (x) => {
-    data?.updateQty({ ...x, qty: x.qty - 1 });
+    let payload = data?.state?.cart?.map((y) =>
+      y.id === x.id ? { ...y, qty: y.qty - 1 } : y
+    );
+    
+    data?.dispatch({ type: 'update-cart', payload });
+
   };
+
   const remove = (x) => {
-    data?.removeFromCart(x.id);
+    let payload = data?.state?.cart?.filter((y) => y.id !== x.id);
+    data?.dispatch({ type: 'remove-from-cart', payload });
   };
 
   return (
     <div>
-      <h1>Cart {data?.cart?.length}</h1>
-      {data?.cart?.map((x) => (
+      <h1>Cart {data?.state?.cart?.length}</h1>
+      {data?.state?.cart?.map((x) => (
         <li>
           {x.title}- {x.qty}
-          <button disabled={x.qty>10} onClick={() => inc(x)}>+</button>
-          <button disabled={x.qty===1} onClick={() => dec(x)}>-</button>
-          <button  onClick={() => remove(x)}>remove</button>
+          <button disabled={x.qty > 10} onClick={() => inc(x)}>
+            +
+          </button>
+          <button disabled={x.qty === 1} onClick={() => dec(x)}>
+            -
+          </button>
+          <button onClick={() => remove(x)}>remove</button>
         </li>
       ))}
     </div>
